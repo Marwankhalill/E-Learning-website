@@ -33,9 +33,14 @@
           <p class="course-description">{{ course.description | slice : 0 : 100 }}</p>
           <div class="course-progress">
             <div class="progress-bar-wrapper">
-              <div class="progress-bar" [style.width.%]="course.progress"></div>
+              <div class="progress-bar" [style.width.%]="course.progress || 0"></div>
             </div>
-            <span class="progress-text">{{ course.progress }}% Complete</span>
+            <div class="progress-details">
+              <span class="progress-text">{{ course.progress || 0 }}% Complete</span>
+              <span class="progress-lessons" *ngIf="course.viewedLessons !== undefined && course.totalLessons !== undefined">
+                ({{ course.viewedLessons }}/{{ course.totalLessons }} lessons)
+              </span>
+            </div>
           </div>
         </div>
         <div class="course-actions">

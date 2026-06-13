@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth';
+import { CourseAccessService } from '../../services/course-access.service';
 
 @Component({
   selector: 'app-enrollment-success',
@@ -69,7 +70,8 @@ export class EnrollmentSuccess implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private courseAccessService: CourseAccessService
   ) {}
 
   ngOnInit() {
@@ -102,9 +104,19 @@ export class EnrollmentSuccess implements OnInit {
         { headers }
       )
       .subscribe({
-        next: () => {
+        next: (response: any) => {
           this.message = 'Enrollment successful! Redirecting...';
-          setTimeout(() => this.router.navigate(['/student/my-courses']), 1500);
+          // Clear cache and fetch fresh enrollments
+          this.courseAccessService.clearCache();
+          this.courseAccessService.fetchEnrollments().subscribe(() => {
+            // Navigate to course player if course ID is available
+            const courseId = response?.course?.id;
+            if (courseId) {
+              setTimeout(() => this.router.navigate(['/course', courseId, 'player']), 1500);
+            } else {
+              setTimeout(() => this.router.navigate(['/student/my-courses']), 1500);
+            }
+          });
         },
         error: () => {
           this.message = 'Error processing enrollment. Redirecting...';

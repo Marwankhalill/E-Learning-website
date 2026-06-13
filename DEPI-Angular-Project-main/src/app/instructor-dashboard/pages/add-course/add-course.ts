@@ -26,22 +26,41 @@ export class AddCourse {
       category: ['', Validators.required],
       price: [0, [Validators.required, Validators.min(0)]],
       level: ['beginner', Validators.required],
-      imageUrl: [''],
-      videoUrl: ['', Validators.required],
+      thumbnail: [null],
       status: ['draft', Validators.required]
     });
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.courseForm.patchValue({ thumbnail: file });
+    }
   }
 
   onSubmit() {
     if (this.courseForm.valid) {
       this.submitting = true;
-      this.coursesService.create(this.courseForm.value).subscribe({
+      const formValue = this.courseForm.value;
+      
+      // Prepare course data for backend
+      const courseData = {
+        title: formValue.title,
+        description: formValue.description,
+        category: formValue.category,
+        price: formValue.price,
+        status: formValue.status === 'published' ? 'published' : 'draft',
+        thumbnail: formValue.thumbnail,
+      };
+
+      this.coursesService.create(courseData).subscribe({
         next: () => {
-          this.router.navigate(['/dashboard/my-courses']);
+          this.router.navigate(['/instructor/my-courses']);
         },
-        error: () => {
+        error: (error) => {
           this.submitting = false;
-          alert('Error creating course. Please try again.');
+          console.error('Error creating course:', error);
+          alert(error?.error?.message || 'Error creating course. Please try again.');
         }
       });
     } else {

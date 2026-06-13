@@ -1,126 +1,194 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { InstructorCourse } from '../models/instructor-course';
+import { AuthService } from '../../services/auth';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class CoursesService {
-  private mockCourses: InstructorCourse[] = [
-    {
-      id: '1',
-      title: 'Complete Web Development Bootcamp',
-      description: 'Learn full-stack web development with modern technologies',
-      category: 'Web Development',
-      price: 99.99,
-      level: 'beginner',
-      imageUrl: '',
-      videoUrl: 'https://example.com/video1',
-      status: 'published',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-10-05',
-      enrolledStudents: 1250
-    },
-    {
-      id: '2',
-      title: 'Advanced React Patterns',
-      description: 'Master advanced React patterns and best practices',
-      category: 'Web Development',
-      price: 79.99,
-      level: 'advanced',
-      imageUrl: '',
-      videoUrl: 'https://example.com/video2',
-      status: 'published',
-      createdAt: '2024-02-20',
-      updatedAt: '2024-09-28',
-      enrolledStudents: 850
-    },
-    {
-      id: '3',
-      title: 'Python for Data Science',
-      description: 'Comprehensive guide to data science with Python',
-      category: 'Data Science',
-      price: 149.99,
-      level: 'intermediate',
-      imageUrl: '',
-      videoUrl: 'https://example.com/video3',
-      status: 'draft',
-      createdAt: '2024-10-01',
-      updatedAt: '2024-10-12',
-      enrolledStudents: 0
-    },
-    {
-      id: '4',
-      title: 'UI/UX Design Masterclass',
-      description: 'Learn professional UI/UX design principles',
-      category: 'Design',
-      price: 129.99,
-      level: 'intermediate',
-      imageUrl: '',
-      videoUrl: 'https://example.com/video4',
-      status: 'published',
-      createdAt: '2024-03-10',
-      updatedAt: '2024-09-15',
-      enrolledStudents: 2100
-    },
-    {
-      id: '5',
-      title: 'Mobile App Development with Flutter',
-      description: 'Build cross-platform mobile apps with Flutter',
-      category: 'Mobile Development',
-      price: 89.99,
-      level: 'beginner',
-      imageUrl: '',
-      videoUrl: 'https://example.com/video5',
-      status: 'published',
-      createdAt: '2024-04-05',
-      updatedAt: '2024-08-20',
-      enrolledStudents: 650
-    }
-  ];
+  private apiUrl = 'http://localhost:3000';
+
+  constructor(private http: HttpClient, private authService: AuthService) {}
+  private getHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    return new HttpHeaders({
+      Authorization: `Bearer ${token}`,
+    });
+  }
 
   getAll(): Observable<InstructorCourse[]> {
-    return of(this.mockCourses).pipe(delay(300));
+    const headers = this.getHeaders();
+    return this.http.get<any[]>(`${this.apiUrl}/courses/instructor-courses`, { headers }).pipe(
+      map((courses) =>
+        courses.map((course) => ({
+          id: course._id || course.id,
+          title: course.title,
+          description: course.description || '',
+          category: Array.isArray(course.category)
+            ? course.category[0]
+            : course.category || 'General',
+          price: course.price || 0,
+          level: 'beginner' as const, // Default level
+          imageUrl: course.thumbnail || '',
+          videoUrl: '',
+          status: course.isPublished ? ('published' as const) : ('draft' as const),
+          createdAt: course.createdAt || new Date().toISOString(),
+          updatedAt: course.updatedAt || new Date().toISOString(),
+          enrolledStudents: (course.enrolledStudents || []).length,
+        }))
+      ),
+      catchError((error) => {
+        console.error('Error loading courses:', error);
+        return of([]);
+      })
+    );
   }
 
   getById(id: string): Observable<InstructorCourse | undefined> {
-    const course = this.mockCourses.find(c => c.id === id);
-    return of(course).pipe(delay(200));
+    const headers = this.getHeaders();
+    return this.http.get<any>(`${this.apiUrl}/courses/${id}`, { headers }).pipe(
+      map((course) => ({
+        id: course._id || course.id,
+        title: course.title,
+        description: course.description || '',
+        category: Array.isArray(course.category)
+          ? course.category[0]
+          : course.category || 'General',
+        price: course.price || 0,
+        level: 'beginner' as const,
+        imageUrl: course.thumbnail || '',
+        videoUrl: '',
+        status: course.isPublished ? ('published' as const) : ('draft' as const),
+        createdAt: course.createdAt || new Date().toISOString(),
+        updatedAt: course.updatedAt || new Date().toISOString(),
+        enrolledStudents: (course.enrolledStudents || []).length,
+      })),
+      catchError((error) => {
+        console.error('Error loading course:', error);
+        return of(undefined);
+      })
+    );
   }
 
-  create(course: Omit<InstructorCourse, 'id' | 'createdAt' | 'updatedAt' | 'enrolledStudents'>): Observable<InstructorCourse> {
-    const newCourse: InstructorCourse = {
-      ...course,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
-      enrolledStudents: 0
-    };
-    this.mockCourses.push(newCourse);
-    return of(newCourse).pipe(delay(300));
-  }
+  create(course: any): Observable<InstructorCourse> {
+    const headers = this.getHeaders();
+    const formData = new FormData();
 
-  update(id: string, course: Partial<InstructorCourse>): Observable<InstructorCourse> {
-    const index = this.mockCourses.findIndex(c => c.id === id);
-    if (index !== -1) {
-      this.mockCourses[index] = {
-        ...this.mockCourses[index],
-        ...course,
-        id,
-        updatedAt: new Date().toISOString().split('T')[0]
-      };
-      return of(this.mockCourses[index]).pipe(delay(300));
+    formData.append('title', course.title);
+    formData.append('description', course.description);
+    formData.append('category', course.category);
+    formData.append('price', course.price.toString());
+    formData.append('isPublished', course.status === 'published' ? 'true' : 'false');
+
+    // Append thumbnail file if provided
+    if (course.thumbnail instanceof File) {
+      formData.append('thumbnail', course.thumbnail);
+    } else if (
+      course.thumbnail &&
+      typeof course.thumbnail === 'string' &&
+      course.thumbnail.startsWith('data:')
+    ) {
+      // Convert data URL to blob if needed
+      const blob = this.dataURLtoBlob(course.thumbnail);
+      formData.append('thumbnail', blob, 'thumbnail.jpg');
     }
-    return of(this.mockCourses[index]).pipe(delay(300));
+
+    return this.http.post<any>(`${this.apiUrl}/courses`, formData, { headers }).pipe(
+      map((createdCourse) => ({
+        id: createdCourse._id || createdCourse.id,
+        title: createdCourse.title,
+        description: createdCourse.description || '',
+        category: Array.isArray(createdCourse.category)
+          ? createdCourse.category[0]
+          : createdCourse.category || 'General',
+        price: createdCourse.price || 0,
+        level: 'beginner' as const,
+        imageUrl: createdCourse.thumbnail || '',
+        videoUrl: '',
+        status: createdCourse.isPublished ? ('published' as const) : ('draft' as const),
+        createdAt: createdCourse.createdAt || new Date().toISOString(),
+        updatedAt: createdCourse.updatedAt || new Date().toISOString(),
+        enrolledStudents: 0,
+      })),
+      catchError((error) => {
+        console.error('Error creating course:', error);
+        throw error;
+      })
+    );
+  }
+
+  update(
+    id: string,
+    course: Partial<InstructorCourse> & { imageUrl?: string | File }
+  ): Observable<InstructorCourse> {
+    const headers = this.getHeaders();
+    const formData = new FormData();
+
+    if (course.title) formData.append('title', course.title);
+    if (course.description) formData.append('description', course.description);
+    if (course.category) formData.append('category', course.category);
+    if (course.price !== undefined) formData.append('price', course.price.toString());
+    if (course.status)
+      formData.append('isPublished', course.status === 'published' ? 'true' : 'false');
+
+    // Handle thumbnail: if it's a File, send it directly; if it's a data URL, convert to blob
+    const thumbnail = course.imageUrl as string | File | undefined;
+    if (thumbnail) {
+      if (thumbnail instanceof File) {
+        formData.append('thumbnail', thumbnail);
+      } else if (typeof thumbnail === 'string' && thumbnail.startsWith('data:')) {
+        const blob = this.dataURLtoBlob(thumbnail);
+        formData.append('thumbnail', blob, 'thumbnail.jpg');
+      }
+    }
+
+    return this.http.patch<any>(`${this.apiUrl}/courses/${id}`, formData, { headers }).pipe(
+      map((updatedCourse) => ({
+        id: updatedCourse._id || updatedCourse.id,
+        title: updatedCourse.title,
+        description: updatedCourse.description || '',
+        category: Array.isArray(updatedCourse.category)
+          ? updatedCourse.category[0]
+          : updatedCourse.category || 'General',
+        price: updatedCourse.price || 0,
+        level: 'beginner' as const,
+        imageUrl: updatedCourse.thumbnail || '',
+        videoUrl: '',
+        status: updatedCourse.isPublished ? ('published' as const) : ('draft' as const),
+        createdAt: updatedCourse.createdAt || new Date().toISOString(),
+        updatedAt: updatedCourse.updatedAt || new Date().toISOString(),
+        enrolledStudents: (updatedCourse.enrolledStudents || []).length,
+      })),
+      catchError((error) => {
+        console.error('Error updating course:', error);
+        throw error;
+      })
+    );
   }
 
   delete(id: string): Observable<boolean> {
-    const index = this.mockCourses.findIndex(c => c.id === id);
-    if (index !== -1) {
-      this.mockCourses.splice(index, 1);
-      return of(true).pipe(delay(300));
+    const headers = this.getHeaders();
+    return this.http.delete<any>(`${this.apiUrl}/courses/${id}`, { headers }).pipe(
+      map(() => true),
+      catchError((error) => {
+        console.error('Error deleting course:', error);
+        return of(false);
+      })
+    );
+  }
+
+  private dataURLtoBlob(dataurl: string): Blob {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
     }
-    return of(false).pipe(delay(300));
+    return new Blob([u8arr], { type: mime });
   }
 }
-

@@ -1,129 +1,66 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, delay } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { InstructorStudent } from '../models/instructor-student';
+import { AuthService } from '../../services/auth';
+import { CoursesService } from './courses.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StudentsService {
-  private mockStudents: InstructorStudent[] = [
-    {
-      id: '1',
-      name: 'Alice Johnson',
-      email: 'alice.johnson@example.com',
-      enrolledCourseId: '1',
-      enrolledCourseName: 'Complete Web Development Bootcamp',
-      progress: 75,
-      enrolledDate: '2024-09-01'
-    },
-    {
-      id: '2',
-      name: 'Bob Smith',
-      email: 'bob.smith@example.com',
-      enrolledCourseId: '1',
-      enrolledCourseName: 'Complete Web Development Bootcamp',
-      progress: 45,
-      enrolledDate: '2024-09-15'
-    },
-    {
-      id: '3',
-      name: 'Carol Williams',
-      email: 'carol.williams@example.com',
-      enrolledCourseId: '2',
-      enrolledCourseName: 'Advanced React Patterns',
-      progress: 90,
-      enrolledDate: '2024-08-20'
-    },
-    {
-      id: '4',
-      name: 'David Brown',
-      email: 'david.brown@example.com',
-      enrolledCourseId: '4',
-      enrolledCourseName: 'UI/UX Design Masterclass',
-      progress: 30,
-      enrolledDate: '2024-10-01'
-    },
-    {
-      id: '5',
-      name: 'Emma Davis',
-      email: 'emma.davis@example.com',
-      enrolledCourseId: '4',
-      enrolledCourseName: 'UI/UX Design Masterclass',
-      progress: 100,
-      enrolledDate: '2024-09-10'
-    },
-    {
-      id: '6',
-      name: 'Frank Miller',
-      email: 'frank.miller@example.com',
-      enrolledCourseId: '5',
-      enrolledCourseName: 'Mobile App Development with Flutter',
-      progress: 60,
-      enrolledDate: '2024-09-25'
-    },
-    {
-      id: '7',
-      name: 'Grace Wilson',
-      email: 'grace.wilson@example.com',
-      enrolledCourseId: '2',
-      enrolledCourseName: 'Advanced React Patterns',
-      progress: 25,
-      enrolledDate: '2024-10-05'
-    },
-    {
-      id: '8',
-      name: 'Henry Moore',
-      email: 'henry.moore@example.com',
-      enrolledCourseId: '1',
-      enrolledCourseName: 'Complete Web Development Bootcamp',
-      progress: 85,
-      enrolledDate: '2024-08-15'
-    }
-  ];
+  private apiUrl = 'http://localhost:3000';
+
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private coursesService: CoursesService
+  ) {}
+  private getHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    return new HttpHeaders({
+      Authorization: `Bearer ${token}`,
+    });
+  }
 
   getAll(): Observable<InstructorStudent[]> {
-    return of(this.mockStudents).pipe(delay(300));
+    const headers = this.getHeaders();
+    
+    return this.http.get<InstructorStudent[]>(`${this.apiUrl}/courses/instructor/students`, { headers }).pipe(
+      map((students) => students || []),
+      catchError((error) => {
+        console.error('Error loading students:', error);
+        return of([]);
+      })
+    );
   }
 
   getById(id: string): Observable<InstructorStudent | undefined> {
-    const student = this.mockStudents.find(s => s.id === id);
-    return of(student).pipe(delay(200));
+    return this.getAll().pipe(
+      map((students) => students.find((s) => s.id === id))
+    );
   }
 
   getByCourseId(courseId: string): Observable<InstructorStudent[]> {
-    const students = this.mockStudents.filter(s => s.enrolledCourseId === courseId);
-    return of(students).pipe(delay(200));
+    return this.getAll().pipe(
+      map((students) => students.filter((s) => s.enrolledCourseId === courseId))
+    );
   }
 
   create(student: Omit<InstructorStudent, 'id'>): Observable<InstructorStudent> {
-    const newStudent: InstructorStudent = {
-      ...student,
-      id: Date.now().toString()
-    };
-    this.mockStudents.push(newStudent);
-    return of(newStudent).pipe(delay(300));
+    // Enrollment is handled through the enrollments endpoint
+    throw new Error('Use enrollments endpoint to create student enrollments');
   }
 
   update(id: string, student: Partial<InstructorStudent>): Observable<InstructorStudent> {
-    const index = this.mockStudents.findIndex(s => s.id === id);
-    if (index !== -1) {
-      this.mockStudents[index] = {
-        ...this.mockStudents[index],
-        ...student,
-        id
-      };
-      return of(this.mockStudents[index]).pipe(delay(300));
-    }
-    return of(this.mockStudents[index]).pipe(delay(300));
+    // Student updates are handled through user profile updates
+    throw new Error('Student updates should be done through user profile endpoint');
   }
 
   delete(id: string): Observable<boolean> {
-    const index = this.mockStudents.findIndex(s => s.id === id);
-    if (index !== -1) {
-      this.mockStudents.splice(index, 1);
-      return of(true).pipe(delay(300));
-    }
-    return of(false).pipe(delay(300));
+    // Student deletion/unenrollment would need a specific endpoint
+    throw new Error('Student deletion requires unenrollment endpoint');
   }
 }
 

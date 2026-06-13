@@ -211,7 +211,7 @@
             </div>
             <button
               class="btn view-course-btn btn btn-primary signup-btn"
-              [routerLink]="['/courses', getCourseId(course)]"
+              (click)="onCourseClick(course)"
             >
               View Course
             </button>

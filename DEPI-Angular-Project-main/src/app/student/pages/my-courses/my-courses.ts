@@ -27,13 +27,15 @@ export class StudentMyCoursesPage implements OnInit {
     this.error = null;
     this.studentService.getEnrolledCourses().subscribe({
       next: (courses) => {
-        // Map courses to include required fields
+        // Map courses to include required fields with progress
         this.enrolledCourses = (courses || []).map((course: any) => ({
           id: course._id || course.id,
           title: course.title || 'Untitled Course',
           progress: course.progress || 0,
           thumbnail: course.thumbnail || '',
           description: course.description || '',
+          viewedLessons: course.viewedLessons || 0,
+          totalLessons: course.totalLessons || 0,
         }));
         this.loading = false;
       },

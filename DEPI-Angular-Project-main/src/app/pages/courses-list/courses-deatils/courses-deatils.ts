@@ -122,7 +122,10 @@ export class CoursesDeatils implements OnInit, OnDestroy {
     this.isLoggedIn = this.authService.isLoggedIn();
 
     if (this.isLoggedIn && this.courseId) {
-      this.hasPurchased = this.courseAccessService.hasPurchasedCourse(this.courseId);
+      // Fetch enrollments if not cached, then check access
+      this.courseAccessService.fetchEnrollments().subscribe(() => {
+        this.hasPurchased = this.courseAccessService.hasPurchasedCourse(this.courseId!);
+      });
     } else {
       this.hasPurchased = false;
     }

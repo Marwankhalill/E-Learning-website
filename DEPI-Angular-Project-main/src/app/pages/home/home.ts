@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { CourseAccessService } from '../../services/course-access.service';
 
 interface Course {
   _id: string;
@@ -25,7 +26,11 @@ export class Home implements OnInit {
   loading = true;
   private apiUrl = 'http://localhost:3000';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router,
+    private courseAccessService: CourseAccessService
+  ) {}
 
   ngOnInit() {
     this.fetchCourses();
@@ -63,5 +68,29 @@ export class Home implements OnInit {
 
   getStudents(course: Course): number {
     return course.enrolledStudents?.length || 0;
+  }
+
+  onCourseClick(course: Course) {
+    const courseId = this.getCourseId(course);
+    if (!courseId) return;
+
+    // Check if user is logged in
+    if (!this.courseAccessService.isLoggedIn()) {
+      // Not logged in - go to course details
+      this.router.navigate(['/courses', courseId]);
+      return;
+    }
+
+    // Check if user has purchased/enrolled in the course
+    // First fetch enrollments if not cached
+    this.courseAccessService.fetchEnrollments().subscribe(() => {
+      if (this.courseAccessService.hasPurchasedCourse(courseId)) {
+        // User is enrolled - go to course player
+        this.router.navigate(['/course', courseId, 'player']);
+      } else {
+        // User is not enrolled - go to course details
+        this.router.navigate(['/courses', courseId]);
+      }
+    });
   }
 }

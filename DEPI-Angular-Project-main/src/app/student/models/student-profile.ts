@@ -13,5 +13,7 @@ export interface StudentProfile {
     title: string;
     thumbnail?: string;
     progress?: number;
+    viewedLessons?: number;
+    totalLessons?: number;
   }[];
 }

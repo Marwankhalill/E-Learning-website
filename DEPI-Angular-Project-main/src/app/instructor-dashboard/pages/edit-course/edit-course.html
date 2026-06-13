@@ -1,7 +1,7 @@
 <div class="edit-course">
   <div class="page-header">
     <h1 class="page-title">Edit Course</h1>
-    <a routerLink="/dashboard/my-courses" class="btn-secondary">
+    <a routerLink="/instructor/my-courses" class="btn-secondary">
       <i class="fas fa-arrow-left"></i>
       Back to Courses
     </a>
@@ -123,36 +123,20 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="imageUrl">Image URL</label>
+          <label for="thumbnail">Course Thumbnail</label>
           <input
-            type="url"
-            id="imageUrl"
-            formControlName="imageUrl"
+            type="file"
+            id="thumbnail"
+            accept="image/*"
+            (change)="onFileSelected($event)"
             class="form-control"
-            placeholder="https://example.com/image.jpg"
           />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="videoUrl">Video URL *</label>
-          <input
-            type="url"
-            id="videoUrl"
-            formControlName="videoUrl"
-            class="form-control"
-            [class.error]="courseForm.get('videoUrl')?.invalid && courseForm.get('videoUrl')?.touched"
-            placeholder="https://example.com/video.mp4"
-          />
-          <div *ngIf="courseForm.get('videoUrl')?.invalid && courseForm.get('videoUrl')?.touched" class="error-message">
-            {{ getFieldError('videoUrl') }}
-          </div>
+          <small class="form-text text-muted">Leave empty to keep current thumbnail</small>
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" routerLink="/dashboard/my-courses" class="btn-secondary">
+        <button type="button" routerLink="/instructor/my-courses" class="btn-secondary">
           Cancel
         </button>
         <button type="submit" class="btn-primary" [disabled]="submitting">
@@ -161,6 +145,245 @@
         </button>
       </div>
     </form>
+
+    <!-- Lessons Management Section -->
+    <div class="lessons-section">
+      <div class="lessons-header">
+        <h2>Course Lessons</h2>
+        <button type="button" class="btn-primary" (click)="toggleLessonForm()">
+          <i class="fas fa-plus"></i>
+          {{ showLessonForm ? 'Cancel' : 'Add Lesson' }}
+        </button>
+      </div>
+
+      <!-- Add Lesson Form -->
+      <div *ngIf="showLessonForm" class="lesson-form-container">
+        <div class="lesson-form-header">
+          <div class="form-header-icon">
+            <i class="fas" [class.fa-video]="!editingLessonId" [class.fa-edit]="editingLessonId"></i>
+          </div>
+          <div>
+            <h3>{{ editingLessonId ? 'Edit Lesson' : 'Add New Lesson' }}</h3>
+            <p class="form-header-subtitle">{{ editingLessonId ? 'Update the lesson details below' : 'Fill in the details below to add a new lesson to your course' }}</p>
+          </div>
+        </div>
+
+        <form [formGroup]="lessonForm" (ngSubmit)="onSubmitLesson()" class="lesson-form">
+          <div class="form-section">
+            <div class="section-title">
+              <i class="fas fa-info-circle"></i>
+              <span>Basic Information</span>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="lesson-title">
+                  <i class="fas fa-heading"></i>
+                  Lesson Title *
+                </label>
+                <input
+                  type="text"
+                  id="lesson-title"
+                  formControlName="title"
+                  class="form-control"
+                  [class.error]="lessonForm.get('title')?.invalid && lessonForm.get('title')?.touched"
+                  placeholder="e.g., Introduction to React Hooks"
+                />
+                <div *ngIf="lessonForm.get('title')?.invalid && lessonForm.get('title')?.touched" class="error-message">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ getLessonFieldError('title') }}
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="lesson-description">
+                  <i class="fas fa-align-left"></i>
+                  Description *
+                </label>
+                <textarea
+                  id="lesson-description"
+                  formControlName="description"
+                  class="form-control"
+                  rows="4"
+                  [class.error]="lessonForm.get('description')?.invalid && lessonForm.get('description')?.touched"
+                  placeholder="Provide a detailed description of what students will learn in this lesson..."
+                ></textarea>
+                <div *ngIf="lessonForm.get('description')?.invalid && lessonForm.get('description')?.touched" class="error-message">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ getLessonFieldError('description') }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">
+              <i class="fas fa-video"></i>
+              <span>Video Content</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="lesson-video">
+                  <i class="fas fa-file-video"></i>
+                  Lesson Video <span *ngIf="!editingLessonId">*</span>
+                  <span *ngIf="editingLessonId" class="optional-badge">(Optional - leave empty to keep current video)</span>
+                </label>
+                <div class="file-upload-wrapper">
+                  <input
+                    type="file"
+                    id="lesson-video"
+                    accept="video/*"
+                    (change)="onLessonFileSelected($event)"
+                    class="file-input"
+                    [class.error]="lessonForm.get('lessonUrl')?.invalid && lessonForm.get('lessonUrl')?.touched && !editingLessonId"
+                  />
+                  <div class="file-upload-area" [class.has-file]="lessonForm.get('lessonUrl')?.value || (editingLessonId && originalLessonData?.lessonUrl)" [class.error]="lessonForm.get('lessonUrl')?.invalid && lessonForm.get('lessonUrl')?.touched">
+                    <div class="file-upload-content">
+                      <i class="fas fa-cloud-upload-alt"></i>
+                      <div *ngIf="!lessonForm.get('lessonUrl')?.value && !(editingLessonId && originalLessonData?.lessonUrl)" class="upload-text">
+                        <p class="upload-title">Click to upload or drag and drop</p>
+                        <p class="upload-subtitle">MP4, MOV, AVI (Max 500MB)</p>
+                      </div>
+                      <div *ngIf="lessonForm.get('lessonUrl')?.value || (editingLessonId && originalLessonData?.lessonUrl)" class="file-selected">
+                        <i class="fas fa-check-circle"></i>
+                        <span>{{ getFileName() }}</span>
+                        <button *ngIf="lessonForm.get('lessonUrl')?.value" type="button" class="remove-file" (click)="removeFile()">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="lessonForm.get('lessonUrl')?.invalid && lessonForm.get('lessonUrl')?.touched && !editingLessonId" class="error-message">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ getLessonFieldError('lessonUrl') }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">
+              <i class="fas fa-cog"></i>
+              <span>Settings</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="lesson-order">
+                  <i class="fas fa-sort-numeric-down"></i>
+                  Lesson Order *
+                </label>
+                <div class="input-with-icon">
+                  <i class="fas fa-hashtag input-icon"></i>
+                  <input
+                    type="number"
+                    id="lesson-order"
+                    formControlName="lessonOrder"
+                    class="form-control"
+                    [class.error]="lessonForm.get('lessonOrder')?.invalid && lessonForm.get('lessonOrder')?.touched"
+                    min="1"
+                    placeholder="1"
+                  />
+                </div>
+                <small class="form-hint">The position of this lesson in the course sequence</small>
+                <div *ngIf="lessonForm.get('lessonOrder')?.invalid && lessonForm.get('lessonOrder')?.touched" class="error-message">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ getLessonFieldError('lessonOrder') }}
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <div class="preview-toggle">
+                  <label class="checkbox-label-enhanced">
+                    <input
+                      type="checkbox"
+                      formControlName="isPreviewFree"
+                      class="checkbox-input"
+                    />
+                    <span class="checkbox-custom">
+                      <i class="fas fa-check"></i>
+                    </span>
+                    <div class="checkbox-content">
+                      <span class="checkbox-title">
+                        <i class="fas fa-unlock"></i>
+                        Free Preview
+                      </span>
+                      <span class="checkbox-description">Allow students to watch this lesson without purchasing the course</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" (click)="cancelEdit(); showLessonForm = false">
+              <i class="fas fa-times"></i>
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary btn-submit" [disabled]="submittingLesson || lessonForm.invalid">
+              <i class="fas" [class.fa-spinner]="submittingLesson" [class.fa-spin]="submittingLesson" [class.fa-plus]="!submittingLesson && !editingLessonId" [class.fa-save]="!submittingLesson && editingLessonId"></i>
+              {{ submittingLesson ? (editingLessonId ? 'Updating Lesson...' : 'Adding Lesson...') : (editingLessonId ? 'Update Lesson' : 'Add Lesson') }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Lessons List -->
+      <div class="lessons-list">
+        <div *ngIf="loadingLessons" class="loading-state">
+          <i class="fas fa-spinner fa-spin"></i>
+          <span>Loading lessons...</span>
+        </div>
+
+        <div *ngIf="!loadingLessons && lessons.length === 0" class="empty-state">
+          <i class="fas fa-video"></i>
+          <p>No lessons added yet. Click "Add Lesson" to get started.</p>
+        </div>
+
+        <div *ngIf="!loadingLessons && lessons.length > 0" class="lessons-grid">
+          <div *ngFor="let lesson of lessons" class="lesson-card">
+            <div class="lesson-info">
+              <div class="lesson-order-badge">{{ lesson.lessonOrder }}</div>
+              <div class="lesson-details">
+                <h4>{{ lesson.title }}</h4>
+                <p class="lesson-description">{{ lesson.description }}</p>
+                <div class="lesson-meta">
+                  <span *ngIf="lesson.isPreviewFree" class="meta-item preview-badge">
+                    <i class="fas fa-unlock"></i>
+                    Free Preview
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="lesson-actions">
+              <button
+                type="button"
+                class="btn-edit btn-sm"
+                (click)="editLesson(lesson)"
+                title="Edit lesson"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                type="button"
+                class="btn-danger btn-sm"
+                (click)="deleteLesson(lesson.id!)"
+                title="Delete lesson"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 

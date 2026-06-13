@@ -5,7 +5,6 @@ import { LogIn } from './pages/log-in/log-in';
 import { CoursesList } from './pages/courses-list/courses-list';
 import { SignUp } from './pages/sign-up/sign-up';
 import { CoursesDeatils } from './pages/courses-list/courses-deatils/courses-deatils';
-import { Payment } from './pages/payment/payment';
 import { CoursePlayerPage } from './pages/course-player/course-player';
 import { EnrollmentSuccess } from './pages/enrollments/success';
 import { authGuard } from './guards/auth.guard';
@@ -23,12 +22,6 @@ export const routes: Routes = [
     component: CoursePlayerPage,
     canActivate: [courseAccessGuard],
     title: 'Course Player',
-  },
-  {
-    path: 'payment/:id',
-    component: Payment,
-    canActivate: [authGuard],
-    title: 'Payment',
   },
   {
     path: 'enrollments/success',

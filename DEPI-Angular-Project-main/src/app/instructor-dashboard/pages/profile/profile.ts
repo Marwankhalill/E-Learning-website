@@ -42,8 +42,8 @@ export class InstructorProfilePage implements OnInit {
         this.profileForm.patchValue({
           name: profile.name,
           email: profile.email,
-          bio: profile.bio,
-          skills: profile.skills.join(', ')
+          bio: profile.bio || '',
+          skills: (profile.skills || []).join(', ')
         });
         this.loading = false;
       },
@@ -59,8 +59,8 @@ export class InstructorProfilePage implements OnInit {
       this.profileForm.patchValue({
         name: this.profile.name,
         email: this.profile.email,
-        bio: this.profile.bio,
-        skills: this.profile.skills.join(', ')
+        bio: this.profile.bio || '',
+        skills: (this.profile.skills || []).join(', ')
       });
     }
   }

@@ -1,7 +1,7 @@
 <div class="add-course">
   <div class="page-header">
     <h1 class="page-title">Add New Course</h1>
-    <a routerLink="/dashboard/my-courses" class="btn-secondary">
+    <a routerLink="/instructor/my-courses" class="btn-secondary">
       <i class="fas fa-arrow-left"></i>
       Back to Courses
     </a>
@@ -118,36 +118,24 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="imageUrl">Image URL</label>
+          <label for="thumbnail">Course Thumbnail *</label>
           <input
-            type="url"
-            id="imageUrl"
-            formControlName="imageUrl"
+            type="file"
+            id="thumbnail"
+            accept="image/*"
+            (change)="onFileSelected($event)"
             class="form-control"
-            placeholder="https://example.com/image.jpg"
+            [class.error]="courseForm.get('thumbnail')?.invalid && courseForm.get('thumbnail')?.touched"
           />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="videoUrl">Video URL *</label>
-          <input
-            type="url"
-            id="videoUrl"
-            formControlName="videoUrl"
-            class="form-control"
-            [class.error]="courseForm.get('videoUrl')?.invalid && courseForm.get('videoUrl')?.touched"
-            placeholder="https://example.com/video.mp4"
-          />
-          <div *ngIf="courseForm.get('videoUrl')?.invalid && courseForm.get('videoUrl')?.touched" class="error-message">
-            {{ getFieldError('videoUrl') }}
+          <small class="form-text text-muted">Upload a thumbnail image for your course</small>
+          <div *ngIf="courseForm.get('thumbnail')?.invalid && courseForm.get('thumbnail')?.touched" class="error-message">
+            Thumbnail is required
           </div>
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" routerLink="/dashboard/my-courses" class="btn-secondary">
+        <button type="button" routerLink="/instructor/my-courses" class="btn-secondary">
           Cancel
         </button>
         <button type="submit" class="btn-primary" [disabled]="submitting">

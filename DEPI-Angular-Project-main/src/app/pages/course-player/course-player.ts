@@ -55,6 +55,16 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => {
       if (this.videoPlayer) {
         this.setupVideoListeners();
+        
+        // If we already have a current video selected, try to play it
+        if (this.currentVideo && this.videoPlayer.nativeElement) {
+          const videoElement = this.videoPlayer.nativeElement;
+          if (videoElement.src && videoElement.readyState >= 1) {
+            videoElement.play().catch(err => {
+              console.log('Autoplay prevented by browser. User interaction required.');
+            });
+          }
+        }
       }
     }, 0);
   }
@@ -73,15 +83,18 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     
-    // Check if user has purchased the course
-    if (this.courseId && !this.courseAccessService.hasPurchasedCourse(this.courseId)) {
-      this.router.navigate(['/payment', this.courseId], {
-        queryParams: { message: 'Please purchase this course to access the content' }
-      });
-      return;
-    }
+    // Fetch enrollments from backend, then check access
+    this.courseAccessService.fetchEnrollments().subscribe(() => {
+      // Check if user has purchased the course
+      if (this.courseId && !this.courseAccessService.hasPurchasedCourse(this.courseId)) {
+        this.router.navigate(['/courses', this.courseId], {
+          queryParams: { message: 'Please purchase this course to access the content' }
+        });
+        return;
+      }
 
-    this.loadCourseData();
+      this.loadCourseData();
+    });
   }
 
 
@@ -110,9 +123,9 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
         // Load completion status
         this.loadCompletionStatus();
 
-        // Set first video as default
+        // Set first video as default and auto-play
         if (this.courseVideos.length > 0) {
-          this.selectVideo(this.courseVideos[0]);
+          this.selectVideo(this.courseVideos[0], true);
         } else {
           console.error('❌ No videos available for this course');
         }
@@ -132,9 +145,9 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
         // Still try to load completion status
         this.loadCompletionStatus();
         
-        // Set first video as default if available
+        // Set first video as default and auto-play if available
         if (this.courseVideos.length > 0) {
-          this.selectVideo(this.courseVideos[0]);
+          this.selectVideo(this.courseVideos[0], true);
         }
       }
     });
@@ -239,6 +252,24 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
     video.addEventListener('loadeddata', loadedHandler);
     (video as any)._loadedHandler = loadedHandler;
 
+    // Video metadata loaded - get actual duration
+    const loadedMetadataHandler = () => {
+      if (this.currentVideo && video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
+        const actualDuration = this.formatDurationFromSeconds(video.duration);
+        // Update the duration in the video item
+        const videoIndex = this.courseVideos.findIndex(v => v.id === this.currentVideo?.id);
+        if (videoIndex !== -1) {
+          this.courseVideos[videoIndex].duration = actualDuration;
+        }
+        // Also update current video
+        if (this.currentVideo) {
+          this.currentVideo.duration = actualDuration;
+        }
+      }
+    };
+    video.addEventListener('loadedmetadata', loadedMetadataHandler);
+    (video as any)._loadedMetadataHandler = loadedMetadataHandler;
+
     // Video error
     const errorHandler = () => {
       this.videoError = true;
@@ -268,6 +299,9 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
     if ((video as any)._loadedHandler) {
       video.removeEventListener('loadeddata', (video as any)._loadedHandler);
     }
+    if ((video as any)._loadedMetadataHandler) {
+      video.removeEventListener('loadedmetadata', (video as any)._loadedMetadataHandler);
+    }
     if ((video as any)._errorHandler) {
       video.removeEventListener('error', (video as any)._errorHandler);
     }
@@ -276,7 +310,7 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  selectVideo(video: VideoItem) {
+  selectVideo(video: VideoItem, autoPlay: boolean = false) {
     if (!video || !video.url) {
       this.handleError('Invalid video selected');
       return;
@@ -302,11 +336,55 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
           videoElement.load();
           this.setupVideoListeners();
           
-          videoElement.play().catch(err => {
-            console.error('Error playing video:', err);
-            this.handleError('Failed to play video. Please try again.');
-            this.videoError = true;
-          });
+          // Check if duration is already available
+          const checkDuration = () => {
+            if (videoElement.duration && !isNaN(videoElement.duration) && isFinite(videoElement.duration)) {
+              const actualDuration = this.formatDurationFromSeconds(videoElement.duration);
+              // Update the duration in the video item
+              const videoIndex = this.courseVideos.findIndex(v => v.id === video.id);
+              if (videoIndex !== -1) {
+                this.courseVideos[videoIndex].duration = actualDuration;
+              }
+              // Also update current video
+              if (this.currentVideo && this.currentVideo.id === video.id) {
+                this.currentVideo.duration = actualDuration;
+              }
+            }
+          };
+          
+          // Check immediately if metadata is already loaded
+          if (videoElement.readyState >= 1) {
+            checkDuration();
+          }
+          
+          // Auto-play if requested (for first video) or if user manually selected
+          if (autoPlay) {
+            // Wait for video to be ready before playing
+            const playVideo = () => {
+              videoElement.play().catch(err => {
+                // Autoplay was prevented - this is normal in many browsers
+                // User will need to click play manually
+                console.log('Autoplay prevented by browser. User interaction required.');
+                this.videoError = false; // Don't show error for autoplay prevention
+              });
+            };
+
+            // Try to play when video metadata is loaded
+            if (videoElement.readyState >= 1) {
+              playVideo();
+            } else {
+              const canPlayHandler = () => {
+                playVideo();
+                videoElement.removeEventListener('canplay', canPlayHandler);
+              };
+              videoElement.addEventListener('canplay', canPlayHandler);
+            }
+          } else {
+            // For manual selections, still try to play but don't treat failure as error
+            videoElement.play().catch(err => {
+              console.log('Video play failed (user may need to click play)');
+            });
+          }
         } catch (err) {
           this.handleError('Error loading video', err);
           this.videoError = true;
@@ -487,6 +565,22 @@ export class CoursePlayerPage implements OnInit, AfterViewInit, OnDestroy {
     } catch (err) {
       this.handleError('Error replaying video', err);
     }
+  }
+
+  /**
+   * Format duration from seconds to MM:SS or HH:MM:SS format
+   */
+  private formatDurationFromSeconds(seconds: number): string {
+    if (!seconds || isNaN(seconds) || !isFinite(seconds)) return '00:00';
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
   // Error handling
